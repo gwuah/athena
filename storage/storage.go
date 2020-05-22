@@ -12,6 +12,7 @@ type CarModel interface {
 	Set(key string, data interface{}) (string, error)
 	RemoveFromList(key string, data interface{}) (int64, error)
 	InsertIntoList(key string, data interface{}) (int64, error)
+	All(key string) ([]string, error)
 }
 
 type StorageInstance struct {

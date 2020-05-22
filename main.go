@@ -14,7 +14,7 @@ func main() {
 	}, Car: storage.RedisConfig{
 		Addr:     "localhost:6379",
 		Password: "",
-		DB:       1,
+		DB:       2,
 	}})
 
 	services.Init(storageInstance)

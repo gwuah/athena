@@ -2,6 +2,7 @@ package controllers
 
 import (
 	"fmt"
+	"log"
 	"strconv"
 
 	"github.com/electra-systems/athena/storage"
@@ -98,4 +99,35 @@ func (c *DriverController) IndexLocation(data DriverLocationData) Response {
 		Data: reponseValue,
 	}
 
+}
+
+func (c *DriverController) FindClosestDrivers(data DriverLocationData, neighbours int) Response {
+	lat, _ := strconv.ParseFloat(data.Lat, 64)
+	lng, _ := strconv.ParseFloat(data.Lng, 64)
+
+	h3Index := utils.IndexLatLng(h3.GeoCoord{Latitude: lat, Longitude: lng})
+
+	rings := h3.KRing(h3Index, neighbours)
+
+	cars := []string{}
+
+	for _, value := range rings {
+		matchedCars, err := c.DB.Car.All(utils.H3IndexToString(value))
+
+		if err != nil {
+			log.Println("Failed To Retrieve Active Drivers")
+			continue
+		}
+
+		cars = append(cars, matchedCars...)
+	}
+
+	reponseValue := map[string]interface{}{
+		"polygons": []interface{}{utils.GeneratePolygons(rings)},
+		"drivers":  cars,
+	}
+
+	return Response{
+		Data: reponseValue,
+	}
 }

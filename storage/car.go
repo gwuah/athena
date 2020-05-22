@@ -37,3 +37,11 @@ func (instance *Car) InsertIntoList(key string, data interface{}) (int64, error)
 	return result, err
 
 }
+
+func (instance *Car) All(key string) ([]string, error) {
+
+	result, err := instance.db.LRange(key, 0, -1).Result()
+
+	return result, err
+
+}

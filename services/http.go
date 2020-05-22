@@ -44,6 +44,35 @@ func Init(db storage.StorageInstance) {
 
 	})
 
+	r.GET("/get-closest-drivers", func(c *gin.Context) {
+		var data controllers.DriverLocationData
+
+		if c.BindJSON(&data) != nil {
+
+			c.JSON(500, gin.H{
+				"message": "Error",
+			})
+
+			return
+		}
+
+		response := driverController.FindClosestDrivers(data, 0)
+
+		if response.Err != nil {
+			c.JSON(500, gin.H{
+				"message": response.Message,
+				"error":   response.Err,
+			})
+			return
+		}
+
+		c.JSON(200, gin.H{
+			"message": response.Message,
+			"data":    response.Data,
+		})
+
+	})
+
 	r.Run()
 
 }
