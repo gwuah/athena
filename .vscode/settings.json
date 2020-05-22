@@ -1,3 +1,4 @@
 {
-  "go.installDependenciesWhenBuilding": false
+  "go.installDependenciesWhenBuilding": false,
+  "editor.tabSize": 2
 }
