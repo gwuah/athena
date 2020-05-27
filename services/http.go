@@ -56,7 +56,7 @@ func Init(db storage.StorageInstance) {
 			return
 		}
 
-		response := driverController.FindClosestDrivers(data, 0)
+		response := driverController.FindClosestDrivers(data, 2)
 
 		if response.Err != nil {
 			c.JSON(500, gin.H{
