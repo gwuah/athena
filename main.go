@@ -1,8 +1,11 @@
 package main
 
 import (
+	"log"
+
 	"github.com/electra-systems/athena/services"
 	"github.com/electra-systems/athena/storage"
+	"github.com/joho/godotenv"
 )
 
 func main() {
@@ -15,6 +18,11 @@ func main() {
 		Password: "",
 		DB:       2,
 	}})
+
+	if err := godotenv.Load(); err != nil {
+		log.Println("No .env file found")
+		return
+	}
 
 	services.Init(storageInstance)
 }

@@ -4,16 +4,31 @@ import (
 	"encoding/json"
 	"fmt"
 	"log"
+	"os"
+	"sort"
+	"strconv"
+	"strings"
 
 	"github.com/electra-systems/athena/storage"
 	"github.com/electra-systems/athena/utils"
-	"github.com/uber/h3-go"
-
 	"github.com/go-redis/redis"
+	"github.com/gwuah/scully"
+
+	"github.com/uber/h3-go"
 )
 
 type DriverController struct {
 	DB storage.StorageInstance
+}
+
+type DistanceAndTime struct {
+	Time     float64 `json:"time"`
+	Distance float64 `json:"distance"`
+}
+
+type DriverWithTimeAndDistance struct {
+	Driver DriverInstance  `json:"driver"`
+	DT     DistanceAndTime `json:"dt"`
 }
 
 type Response struct {
@@ -26,6 +41,12 @@ type DriverLocationData struct {
 	Id  string `json:"id"`
 	Lat string `json:"lat"`
 	Lng string `json:"lng"`
+}
+
+type TripRequestData struct {
+	Id        string `json:"id"`
+	Latitude  string `json:"latitude"`
+	Longitude string `json:"longitude"`
 }
 
 type GeoCoord struct {
@@ -138,11 +159,11 @@ func (c *DriverController) GetMapOverlay(data DriverLocationData, neighbours int
 	}
 }
 
-func (c *DriverController) FindClosestDrivers(data DriverLocationData, neighbours int) Response {
+func (c *DriverController) FindClosestDrivers(data TripRequestData, neighbours int) Response {
 
 	var parsedValue = utils.IndexCoordinates(utils.IndexCoordinatesProps{
-		Lat: data.Lat,
-		Lng: data.Lng,
+		Lat: data.Latitude,
+		Lng: data.Longitude,
 	})
 
 	rings := h3.KRing(parsedValue.Index, neighbours)
@@ -206,37 +227,98 @@ func (c *DriverController) FindClosestDrivers(data DriverLocationData, neighbour
 	}
 }
 
-func (c *DriverController) Dispatch() {
-	// distances := jsonResponse["distances"].([]interface{})
+type DResponse struct {
+	Response
+	Data    []DriverWithTimeAndDistance
+	Message string
+}
 
-	// durations := jsonResponse["durations"].([]interface{})
+func (c *DriverController) Dispatch(data TripRequestData) (DResponse, error) {
 
-	// driverAndEtaData := []DriverWithTimeAndDistance{}
+	response := c.FindClosestDrivers(data, 2)
+	drivers := response.Data["drivers"].([]interface{})
 
-	// for index, driver := range drivers {
-	// 	time := durations[index].([]interface{})
-	// 	distance := distances[index].([]interface{})
+	var transformedDrivers = []DriverInstance{}
+	var lngLats = []string{}
 
-	// 	driverAndEtaData = append(driverAndEtaData, DriverWithTimeAndDistance{
-	// 		Driver: driver,
-	// 		DT: DistanceAndTime{
-	// 			Time:     time[0].(float64),
-	// 			Distance: distance[0].(float64),
-	// 		},
-	// 	})
-	// }
+	for _, value := range drivers {
+		preDriver := value.(map[string]interface{})
+		preCoordinates := preDriver["coordinates"].(map[string]interface{})
 
-	// for _, driver := range driverAndEtaData {
-	// 	fmt.Println(driver)
-	// }
+		driver := DriverInstance{
+			Id: preDriver["id"].(string),
+			Coordinates: GeoCoord{
+				Latitude:  preCoordinates["latitude"].(float64),
+				Longitude: preCoordinates["longitude"].(float64),
+			},
+			LastKnownIndex: preDriver["lastKnownIndex"].(string),
+		}
 
-	// sort.Slice(driverAndEtaData, func(i, j int) bool {
-	// 	return driverAndEtaData[i].DT.Distance > driverAndEtaData[j].DT.Distance
-	// })
+		transformedDrivers = append(transformedDrivers, driver)
+		stringifiedCoordinates := utils.StringifyLngLat(h3.GeoCoord{
+			Latitude:  driver.Coordinates.Latitude,
+			Longitude: driver.Coordinates.Longitude,
+		})
 
-	// fmt.Println("---------------------------------")
+		lngLats = append(lngLats, stringifiedCoordinates)
 
-	// for _, driver := range driverAndEtaData {
-	// 	fmt.Println(driver)
-	// }
+	}
+
+	log.Println(lngLats)
+
+	mapbox, err := scully.New(os.Getenv("ACCESS_TOKEN"))
+
+	if err != nil {
+		return DResponse{}, err
+	}
+
+	parsedValue := utils.ParseCoord(utils.IndexCoordinatesProps{
+		Lat: data.Latitude,
+		Lng: data.Longitude,
+	})
+
+	lngLats = append(lngLats, utils.StringifyLngLat(h3.GeoCoord{
+		Latitude:  parsedValue.Lat,
+		Longitude: parsedValue.Lng,
+	}))
+
+	points := strings.Join(lngLats[:], ";")
+
+	mapbox.Matrix.SetDestinationIndex(strconv.Itoa(len(lngLats) - 1))
+
+	mapboxResponse, err := mapbox.Matrix.GetMatrix(points)
+
+	distances := mapboxResponse["distances"].([]interface{})
+
+	durations := mapboxResponse["durations"].([]interface{})
+
+	driverAndEtaData := []DriverWithTimeAndDistance{}
+
+	for index, driver := range transformedDrivers {
+		duration := durations[index].([]interface{})
+		distance := distances[index].([]interface{})
+
+		driverAndEtaData = append(driverAndEtaData, DriverWithTimeAndDistance{
+			Driver: driver,
+			DT: DistanceAndTime{
+				Time:     duration[0].(float64),
+				Distance: distance[0].(float64),
+			},
+		})
+
+	}
+
+	sort.Slice(driverAndEtaData, func(i, j int) bool {
+		return driverAndEtaData[i].DT.Distance < driverAndEtaData[j].DT.Distance
+	})
+
+	if err != nil {
+		return DResponse{}, err
+	}
+
+	return DResponse{
+		Data:    driverAndEtaData,
+		Message: "ETA Service",
+	}, nil
+
 }

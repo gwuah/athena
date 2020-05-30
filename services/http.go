@@ -1,6 +1,8 @@
 package services
 
 import (
+	"log"
+
 	"github.com/electra-systems/athena/controllers"
 	"github.com/electra-systems/athena/storage"
 	Utils "github.com/electra-systems/athena/utils"
@@ -42,7 +44,7 @@ func Init(db storage.StorageInstance) {
 	})
 
 	r.GET("/get-closest-drivers", func(c *gin.Context) {
-		var data controllers.DriverLocationData
+		var data controllers.TripRequestData
 
 		if c.BindJSON(&data) != nil {
 			c.JSON(500, gin.H{
@@ -52,6 +54,37 @@ func Init(db storage.StorageInstance) {
 		}
 
 		response := driverController.FindClosestDrivers(data, 2)
+
+		if response.Err != nil {
+			c.JSON(500, gin.H{
+				"message": response.Message,
+				"error":   response.Err,
+			})
+			return
+		}
+
+		c.JSON(200, gin.H{
+			"message": response.Message,
+			"data":    response.Data,
+		})
+
+	})
+
+	r.GET("/dispatch", func(c *gin.Context) {
+		var data controllers.TripRequestData
+
+		if c.BindJSON(&data) != nil {
+			c.JSON(500, gin.H{
+				"message": "Error",
+			})
+			return
+		}
+
+		response, err := driverController.Dispatch(data)
+
+		if err != nil {
+			log.Println(err)
+		}
 
 		if response.Err != nil {
 			c.JSON(500, gin.H{

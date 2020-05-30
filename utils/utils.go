@@ -83,14 +83,24 @@ type IndexCoordinatesReturnValue struct {
 	Index    h3.H3Index
 }
 
-func IndexCoordinates(props IndexCoordinatesProps) IndexCoordinatesReturnValue {
+func ParseCoord(props IndexCoordinatesProps) IndexCoordinatesReturnValue {
 	lat, _ := strconv.ParseFloat(props.Lat, 64)
 	lng, _ := strconv.ParseFloat(props.Lng, 64)
 
 	return IndexCoordinatesReturnValue{
-		Index: IndexLatLng(h3.GeoCoord{Latitude: lat, Longitude: lng}),
-		Lat:   lat,
-		Lng:   lng,
+		Lat: lat,
+		Lng: lng,
+	}
+}
+
+func IndexCoordinates(props IndexCoordinatesProps) IndexCoordinatesReturnValue {
+
+	coord := ParseCoord(props)
+
+	return IndexCoordinatesReturnValue{
+		Index: IndexLatLng(h3.GeoCoord{Latitude: coord.Lat, Longitude: coord.Lng}),
+		Lat:   coord.Lat,
+		Lng:   coord.Lng,
 	}
 }
 
