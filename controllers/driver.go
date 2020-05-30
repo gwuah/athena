@@ -1,15 +1,15 @@
 package controllers
 
 import (
+	"encoding/json"
 	"fmt"
 	"log"
-	"strconv"
 
 	"github.com/electra-systems/athena/storage"
 	"github.com/electra-systems/athena/utils"
+	"github.com/uber/h3-go"
 
 	"github.com/go-redis/redis"
-	"github.com/uber/h3-go"
 )
 
 type DriverController struct {
@@ -23,62 +23,81 @@ type Response struct {
 }
 
 type DriverLocationData struct {
-	DriverId string `json:"driver_id"`
-	Lat      string `json:"lat"`
-	Lng      string `json:"lng"`
+	Id  string `json:"id"`
+	Lat string `json:"lat"`
+	Lng string `json:"lng"`
+}
+
+type GeoCoord struct {
+	Latitude  float64 `json:"latitude"`
+	Longitude float64 `json:"longitude"`
+}
+
+type DriverInstance struct {
+	Id             string   `json:"id"`
+	LastKnownIndex string   `json:"lastKnownIndex"`
+	Coordinates    GeoCoord `json:"coordinates"`
 }
 
 func (c *DriverController) IndexLocation(data DriverLocationData) Response {
 
-	lat, _ := strconv.ParseFloat(data.Lat, 64)
-	lng, _ := strconv.ParseFloat(data.Lng, 64)
+	indexedValue := utils.IndexCoordinates(utils.IndexCoordinatesProps{
+		Lat: data.Lat,
+		Lng: data.Lng,
+	})
 
-	h3Index := utils.IndexLatLng(h3.GeoCoord{Latitude: lat, Longitude: lng})
-	stringifiedIndex := utils.H3IndexToString(h3Index)
+	stringifiedIndex := utils.H3IndexToString(indexedValue.Index)
 
-	lastDriverLocationIndex, err := c.DB.Driver.Get(data.DriverId)
+	storedDriverData, err := c.DB.Driver.Get(data.Id)
 
 	if err != redis.Nil && err != nil {
-
 		return Response{
 			Message: "Last driver location lookup Err",
 			Err:     err,
 		}
-
 	}
 
-	fmt.Println(stringifiedIndex, lastDriverLocationIndex)
+	var driverInstance DriverInstance
 
-	if stringifiedIndex == lastDriverLocationIndex {
+	err = json.Unmarshal([]byte(storedDriverData), &driverInstance)
+
+	fmt.Println(stringifiedIndex, driverInstance.LastKnownIndex)
+
+	if stringifiedIndex == driverInstance.LastKnownIndex {
 		return Response{
 			Message: "Driver hasn't changed position",
 			Err:     nil,
 		}
 	}
 
-	_, err = c.DB.Driver.Set(data.DriverId, uint64(h3Index))
+	instance := DriverInstance{Id: data.Id, LastKnownIndex: stringifiedIndex, Coordinates: GeoCoord{
+		Latitude:  indexedValue.Lat,
+		Longitude: indexedValue.Lng,
+	}}
+
+	marshalledValue, err := json.Marshal(instance)
+
+	fmt.Println(string(marshalledValue))
+
+	_, err = c.DB.Driver.Set(data.Id, marshalledValue)
 
 	if err != nil {
-
 		return Response{
 			Message: "Updating driver location failed",
 			Err:     err,
 		}
-
 	}
 
-	_, err = c.DB.Car.RemoveFromList(lastDriverLocationIndex, data.DriverId)
+	_, err = c.DB.Car.RemoveFromList(driverInstance.LastKnownIndex, data.Id)
 
 	if err != nil {
-
 		return Response{
 			Message: "Updating old index failed",
 			Err:     err,
 		}
-
 	}
 
-	_, err = c.DB.Car.InsertIntoList(stringifiedIndex, data.DriverId)
+	_, err = c.DB.Car.InsertIntoList(stringifiedIndex, data.Id)
 
 	if err != nil {
 		return Response{
@@ -88,28 +107,47 @@ func (c *DriverController) IndexLocation(data DriverLocationData) Response {
 	}
 
 	reponseValue := map[string]interface{}{
-		"driver_id":           data.DriverId,
-		"last_driver_index":   lastDriverLocationIndex,
+		"driver_id":           data.Id,
+		"last_driver_index":   driverInstance.LastKnownIndex,
 		"latest_driver_index": stringifiedIndex,
-		"lat":                 lat,
-		"lng":                 lng,
+		"coordinates": map[string]interface{}{
+			"latitude":  indexedValue.Lat,
+			"longitude": indexedValue.Lng,
+		},
 	}
 
 	return Response{
-		Data: reponseValue,
+		Data:    reponseValue,
+		Message: "Success",
 	}
 
 }
 
+func (c *DriverController) GetMapOverlay(data DriverLocationData, neighbours int) Response {
+	var parsedValue = utils.IndexCoordinates(utils.IndexCoordinatesProps{
+		Lat: data.Lat,
+		Lng: data.Lng,
+	})
+
+	rings := h3.KRing(parsedValue.Index, neighbours)
+
+	return Response{
+		Data: map[string]interface{}{
+			"view": utils.GeneratePolygons(rings),
+		},
+	}
+}
+
 func (c *DriverController) FindClosestDrivers(data DriverLocationData, neighbours int) Response {
-	lat, _ := strconv.ParseFloat(data.Lat, 64)
-	lng, _ := strconv.ParseFloat(data.Lng, 64)
 
-	h3Index := utils.IndexLatLng(h3.GeoCoord{Latitude: lat, Longitude: lng})
+	var parsedValue = utils.IndexCoordinates(utils.IndexCoordinatesProps{
+		Lat: data.Lat,
+		Lng: data.Lng,
+	})
 
-	rings := h3.KRing(h3Index, neighbours)
+	rings := h3.KRing(parsedValue.Index, neighbours)
 
-	cars := []string{}
+	cars := []interface{}{}
 
 	for _, value := range rings {
 		matchedCars, err := c.DB.Car.All(utils.H3IndexToString(value))
@@ -119,15 +157,86 @@ func (c *DriverController) FindClosestDrivers(data DriverLocationData, neighbour
 			continue
 		}
 
-		cars = append(cars, matchedCars...)
+		if len(matchedCars) == 0 {
+			// if we pass an empty array to Mget, it throws an error
+			// so we just exit the current iteration and move on
+			continue
+		}
+
+		driverDetails, err := c.DB.Driver.MGet(matchedCars)
+
+		if err != nil {
+			log.Println("Failed to do mass get", err)
+			continue
+		}
+
+		cars = append(cars, driverDetails...)
+	}
+
+	// at this point we have our cars alright, but it's in a stringified format
+	// so the code below loop through our hits and converts them to array
+
+	var parsedDrivers []interface{}
+
+	for _, stringifiedCars := range cars {
+		var parsedDriver interface{}
+
+		str, isString := stringifiedCars.(string)
+		if !isString {
+			log.Println("Value retrieved from redis not string")
+			continue
+		}
+
+		err := json.Unmarshal([]byte(str), &parsedDriver)
+		if err != nil {
+			log.Println("Failed to parse")
+			continue
+		}
+
+		parsedDrivers = append(parsedDrivers, parsedDriver)
 	}
 
 	reponseValue := map[string]interface{}{
-		"polygons": []interface{}{utils.GeneratePolygons(rings)},
-		"drivers":  cars,
+		"drivers": parsedDrivers,
 	}
 
 	return Response{
-		Data: reponseValue,
+		Data:    reponseValue,
+		Message: "Retrived closest drivers successfully",
 	}
+}
+
+func (c *DriverController) Dispatch() {
+	// distances := jsonResponse["distances"].([]interface{})
+
+	// durations := jsonResponse["durations"].([]interface{})
+
+	// driverAndEtaData := []DriverWithTimeAndDistance{}
+
+	// for index, driver := range drivers {
+	// 	time := durations[index].([]interface{})
+	// 	distance := distances[index].([]interface{})
+
+	// 	driverAndEtaData = append(driverAndEtaData, DriverWithTimeAndDistance{
+	// 		Driver: driver,
+	// 		DT: DistanceAndTime{
+	// 			Time:     time[0].(float64),
+	// 			Distance: distance[0].(float64),
+	// 		},
+	// 	})
+	// }
+
+	// for _, driver := range driverAndEtaData {
+	// 	fmt.Println(driver)
+	// }
+
+	// sort.Slice(driverAndEtaData, func(i, j int) bool {
+	// 	return driverAndEtaData[i].DT.Distance > driverAndEtaData[j].DT.Distance
+	// })
+
+	// fmt.Println("---------------------------------")
+
+	// for _, driver := range driverAndEtaData {
+	// 	fmt.Println(driver)
+	// }
 }

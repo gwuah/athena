@@ -2,7 +2,6 @@ package main
 
 import (
 	"github.com/electra-systems/athena/services"
-
 	"github.com/electra-systems/athena/storage"
 )
 
@@ -18,5 +17,4 @@ func main() {
 	}})
 
 	services.Init(storageInstance)
-
 }

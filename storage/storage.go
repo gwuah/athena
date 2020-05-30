@@ -5,6 +5,7 @@ import "github.com/go-redis/redis"
 type DriverModel interface {
 	Get(key string) (string, error)
 	Set(key string, data interface{}) (string, error)
+	MGet(keys []string) ([]interface{}, error)
 }
 
 type CarModel interface {

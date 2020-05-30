@@ -12,18 +12,15 @@ func Init(db storage.StorageInstance) {
 	driverController := controllers.DriverController{DB: db}
 
 	r := gin.Default()
-
 	r.Use(Utils.CORSMiddleware())
 
 	r.POST("/index-driver-location", func(c *gin.Context) {
 		var data controllers.DriverLocationData
 
 		if c.BindJSON(&data) != nil {
-
 			c.JSON(500, gin.H{
 				"message": "Error",
 			})
-
 			return
 		}
 
@@ -48,11 +45,9 @@ func Init(db storage.StorageInstance) {
 		var data controllers.DriverLocationData
 
 		if c.BindJSON(&data) != nil {
-
 			c.JSON(500, gin.H{
 				"message": "Error",
 			})
-
 			return
 		}
 
