@@ -2,13 +2,25 @@ package utils
 
 import (
 	"fmt"
+	"strconv"
 
 	"github.com/gin-gonic/gin"
 	"github.com/uber/h3-go"
 )
 
 type Coord struct {
+	Lat float64 `json:"lat"`
+	Lng float64 `json:"lng"`
+}
+
+type IndexCoordinatesProps struct {
+	Lat string
+	Lng string
+}
+
+type IndexCoordinatesReturnValue struct {
 	Lat, Lng float64
+	Index    h3.H3Index
 }
 
 func CORSMiddleware() gin.HandlerFunc {
@@ -60,4 +72,31 @@ func GeneratePolygons(rings []h3.H3Index) [][]Coord {
 	}
 
 	return arr
+}
+
+func ParseCoord(props IndexCoordinatesProps) IndexCoordinatesReturnValue {
+	lat, _ := strconv.ParseFloat(props.Lat, 64)
+	lng, _ := strconv.ParseFloat(props.Lng, 64)
+
+	return IndexCoordinatesReturnValue{
+		Lat: lat,
+		Lng: lng,
+	}
+}
+
+func IndexCoordinates(props IndexCoordinatesProps) IndexCoordinatesReturnValue {
+
+	coord := ParseCoord(props)
+
+	return IndexCoordinatesReturnValue{
+		Index: IndexLatLng(h3.GeoCoord{Latitude: coord.Lat, Longitude: coord.Lng}),
+		Lat:   coord.Lat,
+		Lng:   coord.Lng,
+	}
+}
+
+func StringifyLngLat(props h3.GeoCoord) string {
+
+	return "" + fmt.Sprintf("%f", props.Longitude) + "," + fmt.Sprintf("%f", props.Latitude)
+
 }

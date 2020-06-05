@@ -1,14 +1,12 @@
 package storage
 
-import "github.com/go-redis/redis"
+import (
+	"github.com/go-redis/redis"
+)
 
-type DriverModel interface {
+type Redis interface {
 	Get(key string) (string, error)
-	Set(key string, data interface{}) (string, error)
-}
-
-type CarModel interface {
-	Get(key string) (string, error)
+	MGet(keys []string) ([]interface{}, error)
 	Set(key string, data interface{}) (string, error)
 	RemoveFromList(key string, data interface{}) (int64, error)
 	InsertIntoList(key string, data interface{}) (int64, error)
@@ -16,8 +14,7 @@ type CarModel interface {
 }
 
 type StorageInstance struct {
-	Driver DriverModel
-	Car    CarModel
+	Driver, Car Redis
 }
 
 type RedisConfig struct {

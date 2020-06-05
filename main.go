@@ -1,9 +1,11 @@
 package main
 
 import (
-	"github.com/electra-systems/athena/services"
+	"log"
 
+	server "github.com/electra-systems/athena/server"
 	"github.com/electra-systems/athena/storage"
+	"github.com/joho/godotenv"
 )
 
 func main() {
@@ -17,6 +19,10 @@ func main() {
 		DB:       2,
 	}})
 
-	services.Init(storageInstance)
+	if err := godotenv.Load(); err != nil {
+		log.Println("No .env file found")
+		return
+	}
 
+	server.Init(storageInstance)
 }
