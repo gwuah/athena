@@ -9,7 +9,18 @@ import (
 )
 
 type Coord struct {
+	Lat float64 `json:"lat"`
+	Lng float64 `json:"lng"`
+}
+
+type IndexCoordinatesProps struct {
+	Lat string
+	Lng string
+}
+
+type IndexCoordinatesReturnValue struct {
 	Lat, Lng float64
+	Index    h3.H3Index
 }
 
 func CORSMiddleware() gin.HandlerFunc {
@@ -61,26 +72,6 @@ func GeneratePolygons(rings []h3.H3Index) [][]Coord {
 	}
 
 	return arr
-}
-
-// type ParseAndIndexProps struct {
-// 	Lat        string
-// 	Lng        string
-// 	Neighbours int
-// }
-
-// type ParseAndIndexReturnValue struct {
-// 	Rings []h3.H3Index
-// }
-
-type IndexCoordinatesProps struct {
-	Lat string
-	Lng string
-}
-
-type IndexCoordinatesReturnValue struct {
-	Lat, Lng float64
-	Index    h3.H3Index
 }
 
 func ParseCoord(props IndexCoordinatesProps) IndexCoordinatesReturnValue {

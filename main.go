@@ -3,7 +3,7 @@ package main
 import (
 	"log"
 
-	"github.com/electra-systems/athena/services"
+	server "github.com/electra-systems/athena/server"
 	"github.com/electra-systems/athena/storage"
 	"github.com/joho/godotenv"
 )
@@ -24,5 +24,5 @@ func main() {
 		return
 	}
 
-	services.Init(storageInstance)
+	server.Init(storageInstance)
 }

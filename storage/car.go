@@ -15,6 +15,10 @@ func (instance *Car) Set(key string, data interface{}) (string, error) {
 	result, err := instance.db.Set(key, data, 0).Result()
 	return result, err
 }
+func (instance *Car) MGet(keys []string) ([]interface{}, error) {
+	result, err := instance.db.MGet(keys...).Result()
+	return result, err
+}
 
 func (instance *Car) RemoveFromList(key string, data interface{}) (int64, error) {
 	result, err := instance.db.LRem(key, 0, data).Result()
