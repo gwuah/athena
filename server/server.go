@@ -18,9 +18,9 @@ func Init(db storage.StorageInstance) {
 
 	r.POST("/index-driver-location", driverController.IndexLocation)
 
-	r.GET("/get-closest-drivers", driverController.FindClosestDrivers)
+	r.POST("/closest-drivers", driverController.FindClosestDrivers)
 
-	r.GET("/get-map-overlay", driverController.GetMapOverlay)
+	r.POST("/get-map-overlay", driverController.GetMapOverlay)
 
 	r.Run()
 
