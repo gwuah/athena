@@ -20,7 +20,7 @@ It's built to work as a core service that order services will integrate with. <b
 
 # Core Modules
 
-For the sake of reusablilty, I've placed the core modules them in a services folder where they can be imported and used.. <br/>
+For the sake of reusablilty, I've placed the core modules in a services folder where they can be imported and used.. <br/>
 
 Example usage of ETA service
 
