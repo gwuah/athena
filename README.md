@@ -5,11 +5,11 @@ We leverage mapbox for features such as distance-matrix to enable us sort hits i
 It's built to work as a core service that order services will integrate with. <br/>
 
 # Deps
-- github.com/gwuah/scully
-- github.com/joho/godotenv
-- github.com/gin-gonic/gin
-- github.com/uber/h3-go
-- github.com/go-redis/redis
+- https://github.com/gwuah/scully
+- https://github.com/joho/godotenv
+- https://github.com/gin-gonic/gin
+- https://github.com/uber/h3-go
+- https://github.com/go-redis/redis
 
 # Status
 
