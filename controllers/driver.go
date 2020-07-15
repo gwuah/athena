@@ -64,6 +64,7 @@ func (d *DriverController) FindClosestDrivers(c *gin.Context) {
 	}
 
 	searchService := services.NewSearch(dbMap, "driver", "supplyIndex")
+	etaService := services.NewETA(dbMap, "driver", "supplyIndex")
 
 	response, err := searchService.Closest(data, 2)
 
@@ -75,9 +76,19 @@ func (d *DriverController) FindClosestDrivers(c *gin.Context) {
 		return
 	}
 
+	results, err := etaService.GetEta(data, response, "distance")
+
+	if err != nil {
+		c.JSON(500, gin.H{
+			"message": "Failed to search",
+			"error":   err,
+		})
+		return
+	}
+
 	c.JSON(200, gin.H{
 		"message": "Closest Drivers Retrieved",
-		"data":    response,
+		"data":    results,
 	})
 
 }
