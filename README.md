@@ -1,6 +1,6 @@
 # Athena
 
-Athena is a an API service that provides 4 main services, geo-indexing, dispatching, proximity-searching, ETA. <br/>
+Athena is an API service that provides 4 services, geo-indexing, dispatching, proximity-searching, ETA. <br/>
 We leverage mapbox for features such as distance-matrix to enable us sort hits in ascending order. <br/>
 It's built to work as a core service that order services will integrate with. <br/>
 
