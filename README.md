@@ -1,15 +1,22 @@
 # Athena
 
-Athena is a an API service that seeks to provides 4 main services, geo-indexing, dispatching, searching, ETA. <br/>
+Athena is a an API service that provides 4 main services, geo-indexing, dispatching, proximity-searching, ETA. <br/>
 We leverage mapbox for features such as distance-matrix to enable us sort hits in ascending order. <br/>
 It's built to work as a core service that order services will integrate with. <br/>
+
+# Deps
+- github.com/gwuah/scully
+- github.com/joho/godotenv
+- github.com/gin-gonic/gin
+- github.com/uber/h3-go
+- github.com/go-redis/redis
 
 # Status
 
 - [x] geo-indexing
-- [] dispatching (Currently working on this)
 - [x] searching
 - [x] ETA
+- [] dispatch (Currently working on this)
 
 # Core Modules
 
@@ -42,9 +49,9 @@ To index driver location data,
 
 ```
 {
-	"id": "8",
-	"lat": "5.678787197821624",
-	"lng": "-0.25505293160676956"
+    "id": "8",
+    "lat": "5.678787197821624",
+    "lng": "-0.25505293160676956"
 }
 ```
 
@@ -71,9 +78,9 @@ To find closest drivers,
 
 ```
 {
-	"id": "3",
-	"lat": "5.678787197821624",
-	"lng": "-0.25505293160676956"
+    "id": "3",
+    "lat": "5.678787197821624",
+    "lng": "-0.25505293160676956"
 }
 ```
 
