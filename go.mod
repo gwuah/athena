@@ -9,4 +9,5 @@ require (
 	github.com/joho/godotenv v1.3.0
 	github.com/onsi/ginkgo v1.12.2 // indirect
 	github.com/uber/h3-go v3.0.1+incompatible
+	github.com/gorilla/websocket v1.4.2
 )
